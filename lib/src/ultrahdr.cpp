@@ -112,9 +112,9 @@ void JobQueue::reset() {
 }
 
 status_t UltraHdr::generateGainMap(uhdr_uncompressed_ptr yuv420_image_ptr,
-                                uhdr_uncompressed_ptr p010_image_ptr,
-                                ultrahdr_transfer_function hdr_tf, ultrahdr_metadata_ptr metadata,
-                                uhdr_uncompressed_ptr dest, bool sdr_is_601) {
+                                   uhdr_uncompressed_ptr p010_image_ptr,
+                                   ultrahdr_transfer_function hdr_tf, ultrahdr_metadata_ptr metadata,
+                                   uhdr_uncompressed_ptr dest, bool sdr_is_601) {
   if (yuv420_image_ptr == nullptr || p010_image_ptr == nullptr || metadata == nullptr ||
       dest == nullptr || yuv420_image_ptr->data == nullptr ||
       yuv420_image_ptr->chroma_data == nullptr || p010_image_ptr->data == nullptr ||
@@ -285,9 +285,9 @@ status_t UltraHdr::generateGainMap(uhdr_uncompressed_ptr yuv420_image_ptr,
 }
 
 status_t UltraHdr::applyGainMap(uhdr_uncompressed_ptr yuv420_image_ptr,
-                             uhdr_uncompressed_ptr gainmap_image_ptr, ultrahdr_metadata_ptr metadata,
-                             ultrahdr_output_format output_format, float max_display_boost,
-                             uhdr_uncompressed_ptr dest) {
+                                uhdr_uncompressed_ptr gainmap_image_ptr, ultrahdr_metadata_ptr metadata,
+                                ultrahdr_output_format output_format, float max_display_boost,
+                                uhdr_uncompressed_ptr dest) {
   if (yuv420_image_ptr == nullptr || gainmap_image_ptr == nullptr || metadata == nullptr ||
       dest == nullptr || yuv420_image_ptr->data == nullptr ||
       yuv420_image_ptr->chroma_data == nullptr || gainmap_image_ptr->data == nullptr) {

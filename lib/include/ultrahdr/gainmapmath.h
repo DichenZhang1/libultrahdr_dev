@@ -417,7 +417,7 @@ Color yuv2100To601(Color e_gamma);
  * x_chroma and y_chroma should be less than or equal to half the image's width and height
  * respecitively, since input is 4:2:0 subsampled.
  */
-void transformYuv420(jr_uncompressed_ptr image, size_t x_chroma, size_t y_chroma,
+void transformYuv420(uhdr_uncompressed_ptr image, size_t x_chroma, size_t y_chroma,
                      ColorTransformFn fn);
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -450,20 +450,20 @@ Color applyGainLUT(Color e, float gain, GainLUT& gainLUT);
 /*
  * Helper for sampling from YUV 420 images.
  */
-Color getYuv420Pixel(jr_uncompressed_ptr image, size_t x, size_t y);
+Color getYuv420Pixel(uhdr_uncompressed_ptr image, size_t x, size_t y);
 
 /*
  * Helper for sampling from P010 images.
  *
  * Expect narrow-range image data for P010.
  */
-Color getP010Pixel(jr_uncompressed_ptr image, size_t x, size_t y);
+Color getP010Pixel(uhdr_uncompressed_ptr image, size_t x, size_t y);
 
 /*
  * Sample the image at the provided location, with a weighting based on nearby
  * pixels and the map scale factor.
  */
-Color sampleYuv420(jr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y);
+Color sampleYuv420(uhdr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y);
 
 /*
  * Sample the image at the provided location, with a weighting based on nearby
@@ -471,14 +471,14 @@ Color sampleYuv420(jr_uncompressed_ptr map, size_t map_scale_factor, size_t x, s
  *
  * Expect narrow-range image data for P010.
  */
-Color sampleP010(jr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y);
+Color sampleP010(uhdr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y);
 
 /*
  * Sample the gain value for the map from a given x,y coordinate on a scale
  * that is map scale factor larger than the map size.
  */
-float sampleMap(jr_uncompressed_ptr map, float map_scale_factor, size_t x, size_t y);
-float sampleMap(jr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y,
+float sampleMap(uhdr_uncompressed_ptr map, float map_scale_factor, size_t x, size_t y);
+float sampleMap(uhdr_uncompressed_ptr map, size_t map_scale_factor, size_t x, size_t y,
                 ShepardsIDW& weightTables);
 
 /*

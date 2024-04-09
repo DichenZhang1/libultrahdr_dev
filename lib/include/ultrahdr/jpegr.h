@@ -25,47 +25,11 @@
 
 namespace ultrahdr {
 
-// The current JPEGR version that we encode to
-static const char* const kJpegrVersion = "1.0";
-
-// Map is quarter res / sixteenth size
-static const size_t kMapDimensionScaleFactor = 4;
-
 // Gain Map width is (image_width / kMapDimensionScaleFactor). If we were to
 // compress 420 GainMap in jpeg, then we need at least 2 samples. For Grayscale
 // 1 sample is sufficient. We are using 2 here anyways
 static const int kMinWidth = 2 * kMapDimensionScaleFactor;
 static const int kMinHeight = 2 * kMapDimensionScaleFactor;
-
-typedef enum {
-  JPEGR_NO_ERROR = 0,
-  JPEGR_UNKNOWN_ERROR = -1,
-
-  JPEGR_IO_ERROR_BASE = -10000,
-  ERROR_JPEGR_BAD_PTR = JPEGR_IO_ERROR_BASE - 1,
-  ERROR_JPEGR_UNSUPPORTED_WIDTH_HEIGHT = JPEGR_IO_ERROR_BASE - 2,
-  ERROR_JPEGR_INVALID_COLORGAMUT = JPEGR_IO_ERROR_BASE - 3,
-  ERROR_JPEGR_INVALID_STRIDE = JPEGR_IO_ERROR_BASE - 4,
-  ERROR_JPEGR_INVALID_TRANS_FUNC = JPEGR_IO_ERROR_BASE - 5,
-  ERROR_JPEGR_RESOLUTION_MISMATCH = JPEGR_IO_ERROR_BASE - 6,
-  ERROR_JPEGR_INVALID_QUALITY_FACTOR = JPEGR_IO_ERROR_BASE - 7,
-  ERROR_JPEGR_INVALID_DISPLAY_BOOST = JPEGR_IO_ERROR_BASE - 8,
-  ERROR_JPEGR_INVALID_OUTPUT_FORMAT = JPEGR_IO_ERROR_BASE - 9,
-  ERROR_JPEGR_BAD_METADATA = JPEGR_IO_ERROR_BASE - 10,
-  ERROR_JPEGR_INVALID_CROPPING_PARAMETERS = JPEGR_IO_ERROR_BASE - 11,
-
-  JPEGR_RUNTIME_ERROR_BASE = -20000,
-  ERROR_JPEGR_ENCODE_ERROR = JPEGR_RUNTIME_ERROR_BASE - 1,
-  ERROR_JPEGR_DECODE_ERROR = JPEGR_RUNTIME_ERROR_BASE - 2,
-  ERROR_JPEGR_GAIN_MAP_IMAGE_NOT_FOUND = JPEGR_RUNTIME_ERROR_BASE - 3,
-  ERROR_JPEGR_BUFFER_TOO_SMALL = JPEGR_RUNTIME_ERROR_BASE - 4,
-  ERROR_JPEGR_METADATA_ERROR = JPEGR_RUNTIME_ERROR_BASE - 5,
-  ERROR_JPEGR_NO_IMAGES_FOUND = JPEGR_RUNTIME_ERROR_BASE - 6,
-  ERROR_JPEGR_MULTIPLE_EXIFS_RECEIVED = JPEGR_RUNTIME_ERROR_BASE - 7,
-  ERROR_JPEGR_UNSUPPORTED_MAP_SCALE_FACTOR = JPEGR_RUNTIME_ERROR_BASE - 8,
-
-  ERROR_JPEGR_UNSUPPORTED_FEATURE = -30000,
-} status_t;
 
 /*
  * Holds information of jpeg image
@@ -89,70 +53,10 @@ struct jpegr_info_struct {
   jpeg_info_struct* gainmapImgInfo = nullptr;
 };
 
-/*
- * Holds information for uncompressed image or gain map.
- */
-struct jpegr_uncompressed_struct {
-  // Pointer to the data location.
-  void* data;
-  // Width of the gain map or the luma plane of the image in pixels.
-  size_t width;
-  // Height of the gain map or the luma plane of the image in pixels.
-  size_t height;
-  // Color gamut.
-  ultrahdr_color_gamut colorGamut;
-
-  // Values below are optional
-  // Pointer to chroma data, if it's NULL, chroma plane is considered to be immediately
-  // after the luma plane.
-  void* chroma_data = nullptr;
-  // Stride of Y plane in number of pixels. 0 indicates the member is uninitialized. If
-  // non-zero this value must be larger than or equal to luma width. If stride is
-  // uninitialized then it is assumed to be equal to luma width.
-  size_t luma_stride = 0;
-  // Stride of UV plane in number of pixels.
-  // 1. If this handle points to P010 image then this value must be larger than
-  //    or equal to luma width.
-  // 2. If this handle points to 420 image then this value must be larger than
-  //    or equal to (luma width / 2).
-  // NOTE: if chroma_data is nullptr, chroma_stride is irrelevant. Just as the way,
-  // chroma_data is derived from luma ptr, chroma stride is derived from luma stride.
-  size_t chroma_stride = 0;
-  // Pixel format.
-  ultrahdr_pixel_format pixelFormat = ULTRAHDR_PIX_FMT_UNSPECIFIED;
-};
-
-/*
- * Holds information for compressed image or gain map.
- */
-struct jpegr_compressed_struct {
-  // Pointer to the data location.
-  void* data;
-  // Used data length in bytes.
-  int length;
-  // Maximum available data length in bytes.
-  int maxLength;
-  // Color gamut.
-  ultrahdr_color_gamut colorGamut;
-};
-
-/*
- * Holds information for EXIF metadata.
- */
-struct jpegr_exif_struct {
-  // Pointer to the data location.
-  void* data;
-  // Data length;
-  size_t length;
-};
-
-typedef struct jpegr_uncompressed_struct* jr_uncompressed_ptr;
-typedef struct jpegr_compressed_struct* jr_compressed_ptr;
-typedef struct jpegr_exif_struct* jr_exif_ptr;
 typedef struct jpeg_info_struct* j_info_ptr;
-typedef struct jpegr_info_struct* jr_info_ptr;
+typedef struct jpegr_info_struct* uhdr_info_ptr;
 
-class JpegR {
+class JpegR : public UltraHdr {
  public:
   /*
    * Experimental only
@@ -174,8 +78,8 @@ class JpegR {
    * @param exif pointer to the exif metadata.
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t encodeJPEGR(jr_uncompressed_ptr p010_image_ptr, ultrahdr_transfer_function hdr_tf,
-                       jr_compressed_ptr dest, int quality, jr_exif_ptr exif);
+  status_t encodeJPEGR(uhdr_uncompressed_ptr p010_image_ptr, ultrahdr_transfer_function hdr_tf,
+                       uhdr_compressed_ptr dest, int quality, uhdr_exif_ptr exif);
 
   /*
    * Encode API-1
@@ -196,9 +100,9 @@ class JpegR {
    * @param exif pointer to the exif metadata.
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t encodeJPEGR(jr_uncompressed_ptr p010_image_ptr, jr_uncompressed_ptr yuv420_image_ptr,
-                       ultrahdr_transfer_function hdr_tf, jr_compressed_ptr dest, int quality,
-                       jr_exif_ptr exif);
+  status_t encodeJPEGR(uhdr_uncompressed_ptr p010_image_ptr, uhdr_uncompressed_ptr yuv420_image_ptr,
+                       ultrahdr_transfer_function hdr_tf, uhdr_compressed_ptr dest, int quality,
+                       uhdr_exif_ptr exif);
 
   /*
    * Encode API-2
@@ -220,9 +124,9 @@ class JpegR {
    *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t encodeJPEGR(jr_uncompressed_ptr p010_image_ptr, jr_uncompressed_ptr yuv420_image_ptr,
-                       jr_compressed_ptr yuv420jpg_image_ptr, ultrahdr_transfer_function hdr_tf,
-                       jr_compressed_ptr dest);
+  status_t encodeJPEGR(uhdr_uncompressed_ptr p010_image_ptr, uhdr_uncompressed_ptr yuv420_image_ptr,
+                       uhdr_compressed_ptr yuv420jpg_image_ptr, ultrahdr_transfer_function hdr_tf,
+                       uhdr_compressed_ptr dest);
 
   /*
    * Encode API-3
@@ -243,8 +147,8 @@ class JpegR {
    *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t encodeJPEGR(jr_uncompressed_ptr p010_image_ptr, jr_compressed_ptr yuv420jpg_image_ptr,
-                       ultrahdr_transfer_function hdr_tf, jr_compressed_ptr dest);
+  status_t encodeJPEGR(uhdr_uncompressed_ptr p010_image_ptr, uhdr_compressed_ptr yuv420jpg_image_ptr,
+                       ultrahdr_transfer_function hdr_tf, uhdr_compressed_ptr dest);
 
   /*
    * Encode API-4
@@ -261,9 +165,9 @@ class JpegR {
    *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t encodeJPEGR(jr_compressed_ptr yuv420jpg_image_ptr,
-                       jr_compressed_ptr gainmapjpg_image_ptr, ultrahdr_metadata_ptr metadata,
-                       jr_compressed_ptr dest);
+  status_t encodeJPEGR(uhdr_compressed_ptr yuv420jpg_image_ptr,
+                       uhdr_compressed_ptr gainmapjpg_image_ptr, ultrahdr_metadata_ptr metadata,
+                       uhdr_compressed_ptr dest);
 
   /*
    * Decode API
@@ -306,10 +210,10 @@ class JpegR {
                      {@code ultrahdr_metadata_struct}.
    * @return NO_ERROR if decoding succeeds, error code if error occurs.
    */
-  status_t decodeJPEGR(jr_compressed_ptr jpegr_image_ptr, jr_uncompressed_ptr dest,
-                       float max_display_boost = FLT_MAX, jr_exif_ptr exif = nullptr,
+  status_t decodeJPEGR(uhdr_compressed_ptr jpegr_image_ptr, uhdr_uncompressed_ptr dest,
+                       float max_display_boost = FLT_MAX, uhdr_exif_ptr exif = nullptr,
                        ultrahdr_output_format output_format = ULTRAHDR_OUTPUT_HDR_LINEAR,
-                       jr_uncompressed_ptr gainmap_image_ptr = nullptr,
+                       uhdr_uncompressed_ptr gainmap_image_ptr = nullptr,
                        ultrahdr_metadata_ptr metadata = nullptr);
 
   /*
@@ -324,48 +228,7 @@ class JpegR {
    *                            are owned by the caller
    * @return NO_ERROR if JPEGR parsing succeeds, error code otherwise
    */
-  status_t getJPEGRInfo(jr_compressed_ptr jpegr_image_ptr, jr_info_ptr jpeg_image_info_ptr);
-
- protected:
-  /*
-   * This method is called in the encoding pipeline. It will take the uncompressed 8-bit and
-   * 10-bit yuv images as input, and calculate the uncompressed gain map. The input images
-   * must be the same resolution. The SDR input is assumed to use the sRGB transfer function.
-   *
-   * @param yuv420_image_ptr uncompressed SDR image in YUV_420 color format
-   * @param p010_image_ptr uncompressed HDR image in P010 color format
-   * @param hdr_tf transfer function of the HDR image
-   * @param metadata everything but "version" is filled in this struct
-   * @param dest location at which gain map image is stored (caller responsible for memory
-                 of data).
-   * @param sdr_is_601 if true, then use BT.601 decoding of YUV regardless of SDR image gamut
-   * @return NO_ERROR if calculation succeeds, error code if error occurs.
-   */
-  status_t generateGainMap(jr_uncompressed_ptr yuv420_image_ptr, jr_uncompressed_ptr p010_image_ptr,
-                           ultrahdr_transfer_function hdr_tf, ultrahdr_metadata_ptr metadata,
-                           jr_uncompressed_ptr dest, bool sdr_is_601 = false);
-
-  /*
-   * This method is called in the decoding pipeline. It will take the uncompressed (decoded)
-   * 8-bit yuv image, the uncompressed (decoded) gain map, and extracted JPEG/R metadata as
-   * input, and calculate the 10-bit recovered image. The recovered output image is the same
-   * color gamut as the SDR image, with HLG transfer function, and is in RGBA1010102 data format.
-   * The SDR image is assumed to use the sRGB transfer function. The SDR image is also assumed to
-   * be a decoded JPEG for the purpose of YUV interpration.
-   *
-   * @param yuv420_image_ptr uncompressed SDR image in YUV_420 color format
-   * @param gainmap_image_ptr pointer to uncompressed gain map image struct.
-   * @param metadata JPEG/R metadata extracted from XMP.
-   * @param output_format flag for setting output color format. if set to
-   *                      {@code JPEGR_OUTPUT_SDR}, decoder will only decode the primary image
-   *                      which is SDR. Default value is JPEGR_OUTPUT_HDR_LINEAR.
-   * @param max_display_boost the maximum available boost supported by a display
-   * @param dest reconstructed HDR image
-   * @return NO_ERROR if calculation succeeds, error code if error occurs.
-   */
-  status_t applyGainMap(jr_uncompressed_ptr yuv420_image_ptr, jr_uncompressed_ptr gainmap_image_ptr,
-                        ultrahdr_metadata_ptr metadata, ultrahdr_output_format output_format,
-                        float max_display_boost, jr_uncompressed_ptr dest);
+  status_t getJPEGRInfo(uhdr_compressed_ptr jpegr_image_ptr, uhdr_info_ptr jpeg_image_info_ptr);
 
  private:
   /*
@@ -375,7 +238,7 @@ class JpegR {
    * @param jpeg_enc_obj_ptr helper resource to compress gain map
    * @return NO_ERROR if encoding succeeds, error code if error occurs.
    */
-  status_t compressGainMap(jr_uncompressed_ptr gainmap_image_ptr,
+  status_t compressGainMap(uhdr_uncompressed_ptr gainmap_image_ptr,
                            JpegEncoderHelper* jpeg_enc_obj_ptr);
 
   /*
@@ -386,9 +249,9 @@ class JpegR {
    * @param gainmap_jpg_image_ptr destination of compressed gain map image
    * @return NO_ERROR if calculation succeeds, error code if error occurs.
    */
-  status_t extractPrimaryImageAndGainMap(jr_compressed_ptr jpegr_image_ptr,
-                                         jr_compressed_ptr primary_jpg_image_ptr,
-                                         jr_compressed_ptr gainmap_jpg_image_ptr);
+  status_t extractPrimaryImageAndGainMap(uhdr_compressed_ptr jpegr_image_ptr,
+                                         uhdr_compressed_ptr primary_jpg_image_ptr,
+                                         uhdr_compressed_ptr gainmap_jpg_image_ptr);
 
   /*
    * Gets Info from JPEG image without decoding it.
@@ -401,7 +264,7 @@ class JpegR {
    * @param img_height (optional) pointer to store height of jpeg image
    * @return NO_ERROR if JPEGR parsing succeeds, error code otherwise
    */
-  status_t parseJpegInfo(jr_compressed_ptr jpeg_image_ptr, j_info_ptr jpeg_image_info_ptr,
+  status_t parseJpegInfo(uhdr_compressed_ptr jpeg_image_ptr, j_info_ptr jpeg_image_info_ptr,
                          size_t* img_width = nullptr, size_t* img_height = nullptr);
 
   /*
@@ -425,18 +288,9 @@ class JpegR {
    * @param dest compressed JPEGR image
    * @return NO_ERROR if calculation succeeds, error code if error occurs.
    */
-  status_t appendGainMap(jr_compressed_ptr primary_jpg_image_ptr,
-                         jr_compressed_ptr gainmap_jpg_image_ptr, jr_exif_ptr pExif, void* pIcc,
-                         size_t icc_size, ultrahdr_metadata_ptr metadata, jr_compressed_ptr dest);
-
-  /*
-   * This method will tone map a HDR image to an SDR image.
-   *
-   * @param src pointer to uncompressed HDR image struct. HDR image is expected to be
-   *            in p010 color format
-   * @param dest pointer to store tonemapped SDR image
-   */
-  status_t toneMap(jr_uncompressed_ptr src, jr_uncompressed_ptr dest);
+  status_t appendGainMap(uhdr_compressed_ptr primary_jpg_image_ptr,
+                         uhdr_compressed_ptr gainmap_jpg_image_ptr, uhdr_exif_ptr pExif, void* pIcc,
+                         size_t icc_size, ultrahdr_metadata_ptr metadata, uhdr_compressed_ptr dest);
 
   /*
    * This method will convert a YUV420 image from one YUV encoding to another in-place (eg.
@@ -450,7 +304,7 @@ class JpegR {
    * @param dest_encoding output YUV encoding
    * @return NO_ERROR if calculation succeeds, error code if error occurs.
    */
-  status_t convertYuv(jr_uncompressed_ptr image, ultrahdr_color_gamut src_encoding,
+  status_t convertYuv(uhdr_uncompressed_ptr image, ultrahdr_color_gamut src_encoding,
                       ultrahdr_color_gamut dest_encoding);
 
   /*
@@ -466,9 +320,9 @@ class JpegR {
    *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
    * @return NO_ERROR if the input args are valid, error code is not valid.
    */
-  status_t areInputArgumentsValid(jr_uncompressed_ptr p010_image_ptr,
-                                  jr_uncompressed_ptr yuv420_image_ptr,
-                                  ultrahdr_transfer_function hdr_tf, jr_compressed_ptr dest_ptr);
+  status_t areInputArgumentsValid(uhdr_uncompressed_ptr p010_image_ptr,
+                                  uhdr_uncompressed_ptr yuv420_image_ptr,
+                                  ultrahdr_transfer_function hdr_tf, uhdr_compressed_ptr dest_ptr);
 
   /*
    * This method will check the validity of the input arguments.
@@ -485,9 +339,9 @@ class JpegR {
    *                the highest quality
    * @return NO_ERROR if the input args are valid, error code is not valid.
    */
-  status_t areInputArgumentsValid(jr_uncompressed_ptr p010_image_ptr,
-                                  jr_uncompressed_ptr yuv420_image_ptr,
-                                  ultrahdr_transfer_function hdr_tf, jr_compressed_ptr dest,
+  status_t areInputArgumentsValid(uhdr_uncompressed_ptr p010_image_ptr,
+                                  uhdr_uncompressed_ptr yuv420_image_ptr,
+                                  ultrahdr_transfer_function hdr_tf, uhdr_compressed_ptr dest,
                                   int quality);
 };
 }  // namespace ultrahdr

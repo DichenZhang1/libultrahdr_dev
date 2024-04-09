@@ -92,14 +92,14 @@ bool DataStruct::write(const void* src, int size) {
 /*
  * Helper function used for writing data to destination.
  */
-status_t Write(jr_compressed_ptr destination, const void* source, size_t length, int& position) {
+status_t Write(uhdr_compressed_ptr destination, const void* source, size_t length, int& position) {
   if (position + length > destination->maxLength) {
-    return ERROR_JPEGR_BUFFER_TOO_SMALL;
+    return ERROR_ULTRAHDR_BUFFER_TOO_SMALL;
   }
 
   memcpy((uint8_t*)destination->data + sizeof(uint8_t) * position, source, length);
   position += length;
-  return JPEGR_NO_ERROR;
+  return ULTRAHDR_NO_ERROR;
 }
 
 // Extremely simple XML Handler - just searches for interesting elements

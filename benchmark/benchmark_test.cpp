@@ -168,7 +168,7 @@ static bool loadFile(const char* filename, void*& result, int length) {
   return false;
 }
 
-bool fillRawImageHandle(jpegr_uncompressed_struct* rawImage, int width, int height,
+bool fillRawImageHandle(ultrahdr_uncompressed_struct* rawImage, int width, int height,
                         std::string file, ultrahdr_color_gamut cg, bool isP010) {
   const int bpp = isP010 ? 2 : 1;
   int imgSize = width * height * bpp * 1.5;
@@ -178,7 +178,7 @@ bool fillRawImageHandle(jpegr_uncompressed_struct* rawImage, int width, int heig
   return loadFile(file.c_str(), rawImage->data, imgSize);
 }
 
-bool fillJpgImageHandle(jpegr_compressed_struct* jpgImg, std::string file,
+bool fillJpgImageHandle(ultrahdr_compressed_struct* jpgImg, std::string file,
                         ultrahdr_color_gamut colorGamut) {
   std::ifstream ifd(file.c_str(), std::ios::binary | std::ios::ate);
   if (!ifd.good()) {
@@ -204,7 +204,7 @@ static void BM_Decode(benchmark::State& s) {
   }
   int size = ifd.tellg();
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.length = size;
   jpegImgR.maxLength = size;
   jpegImgR.data = nullptr;
@@ -219,20 +219,20 @@ static void BM_Decode(benchmark::State& s) {
   compData.reset(reinterpret_cast<uint8_t*>(jpegImgR.data));
 
   JpegR jpegHdr;
-  jpegr_info_struct info{};
+  ultrahdr_info_struct info{};
   status_t status = jpegHdr.getJPEGRInfo(&jpegImgR, &info);
-  if (JPEGR_NO_ERROR != status) {
+  if (ULTRAHDR_NO_ERROR != status) {
     s.SkipWithError("getJPEGRInfo returned with error " + std::to_string(status));
     return;
   }
 
   size_t outSize = info.width * info.height * ((of == ULTRAHDR_OUTPUT_HDR_LINEAR) ? 8 : 4);
   std::unique_ptr<uint8_t[]> data = std::make_unique<uint8_t[]>(outSize);
-  jpegr_uncompressed_struct destImage{};
+  ultrahdr_uncompressed_struct destImage{};
   destImage.data = data.get();
   for (auto _ : s) {
     status = jpegHdr.decodeJPEGR(&jpegImgR, &destImage, FLT_MAX, nullptr, of);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("decodeJPEGR returned with error " + std::to_string(status));
       return;
     }
@@ -257,7 +257,7 @@ static void BM_Encode_Api0(benchmark::State& s, std::vector<std::string> testVec
 
   std::string p010File{kTestImagesPath + "p010/" + testVectors[s.range(0)]};
 
-  jpegr_uncompressed_struct rawP010Image{};
+  ultrahdr_uncompressed_struct rawP010Image{};
   if (!fillRawImageHandle(&rawP010Image, width, height, p010File, p010Cg, true)) {
     s.SkipWithError("unable to load file : " + p010File);
     return;
@@ -265,7 +265,7 @@ static void BM_Encode_Api0(benchmark::State& s, std::vector<std::string> testVec
   std::unique_ptr<uint8_t[]> rawP010ImgData;
   rawP010ImgData.reset(reinterpret_cast<uint8_t*>(rawP010Image.data));
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.maxLength = (std::max)(static_cast<size_t>(8 * 1024) /* min size 8kb */,
                                   rawP010Image.width * rawP010Image.height * 3 * 2);
   jpegImgR.data = new uint8_t[jpegImgR.maxLength];
@@ -279,7 +279,7 @@ static void BM_Encode_Api0(benchmark::State& s, std::vector<std::string> testVec
   JpegR jpegHdr;
   for (auto _ : s) {
     status_t status = jpegHdr.encodeJPEGR(&rawP010Image, tf, &jpegImgR, 95, nullptr);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("encodeJPEGR returned with error : " + std::to_string(status));
       return;
     }
@@ -301,7 +301,7 @@ static void BM_Encode_Api1(benchmark::State& s,
 
   std::string p010File{kTestImagesPath + "p010/" + testVectors[s.range(0)].first};
 
-  jpegr_uncompressed_struct rawP010Image{};
+  ultrahdr_uncompressed_struct rawP010Image{};
   if (!fillRawImageHandle(&rawP010Image, width, height, p010File, p010Cg, true)) {
     s.SkipWithError("unable to load file : " + p010File);
     return;
@@ -311,7 +311,7 @@ static void BM_Encode_Api1(benchmark::State& s,
 
   std::string yuv420File{kTestImagesPath + "yuv420/" + testVectors[s.range(0)].second};
 
-  jpegr_uncompressed_struct rawYuv420Image{};
+  ultrahdr_uncompressed_struct rawYuv420Image{};
   if (!fillRawImageHandle(&rawYuv420Image, width, height, yuv420File, yuv420Cg, false)) {
     s.SkipWithError("unable to load file : " + yuv420File);
     return;
@@ -319,7 +319,7 @@ static void BM_Encode_Api1(benchmark::State& s,
   std::unique_ptr<uint8_t[]> rawYuv420ImgData;
   rawYuv420ImgData.reset(reinterpret_cast<uint8_t*>(rawYuv420Image.data));
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.maxLength = (std::max)(static_cast<size_t>(8 * 1024) /* min size 8kb */,
                                   rawP010Image.width * rawP010Image.height * 3 * 2);
   jpegImgR.data = new uint8_t[jpegImgR.maxLength];
@@ -331,7 +331,7 @@ static void BM_Encode_Api1(benchmark::State& s,
   for (auto _ : s) {
     status_t status =
         jpegHdr.encodeJPEGR(&rawP010Image, &rawYuv420Image, tf, &jpegImgR, 95, nullptr);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("encodeJPEGR returned with error : " + std::to_string(status));
       return;
     }
@@ -352,7 +352,7 @@ static void BM_Encode_Api2(
 
   std::string p010File{kTestImagesPath + "p010/" + std::get<0>(testVectors[s.range(0)])};
 
-  jpegr_uncompressed_struct rawP010Image{};
+  ultrahdr_uncompressed_struct rawP010Image{};
   if (!fillRawImageHandle(&rawP010Image, width, height, p010File, p010Cg, true)) {
     s.SkipWithError("unable to load file : " + p010File);
     return;
@@ -362,7 +362,7 @@ static void BM_Encode_Api2(
 
   std::string yuv420File{kTestImagesPath + "yuv420/" + std::get<1>(testVectors[s.range(0)])};
 
-  jpegr_uncompressed_struct rawYuv420Image{};
+  ultrahdr_uncompressed_struct rawYuv420Image{};
   if (!fillRawImageHandle(&rawYuv420Image, width, height, yuv420File, ULTRAHDR_COLORGAMUT_P3,
                           false)) {
     s.SkipWithError("unable to load file : " + yuv420File);
@@ -374,7 +374,7 @@ static void BM_Encode_Api2(
   std::string yuv420JpegFile{
       (kTestImagesPath + "yuv420jpeg/" + std::get<2>(testVectors[s.range(0)]))};
 
-  jpegr_compressed_struct yuv420JpegImage{};
+  ultrahdr_compressed_struct yuv420JpegImage{};
   if (!fillJpgImageHandle(&yuv420JpegImage, yuv420JpegFile, ULTRAHDR_COLORGAMUT_P3)) {
     s.SkipWithError("unable to load file : " + yuv420JpegFile);
     return;
@@ -382,7 +382,7 @@ static void BM_Encode_Api2(
   std::unique_ptr<uint8_t[]> yuv420jpegImgData;
   yuv420jpegImgData.reset(reinterpret_cast<uint8_t*>(yuv420JpegImage.data));
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.maxLength = (std::max)(static_cast<size_t>(8 * 1024) /* min size 8kb */,
                                   rawP010Image.width * rawP010Image.height * 3 * 2);
   jpegImgR.data = new uint8_t[jpegImgR.maxLength];
@@ -397,7 +397,7 @@ static void BM_Encode_Api2(
   for (auto _ : s) {
     status_t status =
         jpegHdr.encodeJPEGR(&rawP010Image, &rawYuv420Image, &yuv420JpegImage, tf, &jpegImgR);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("encodeJPEGR returned with error : " + std::to_string(status));
       return;
     }
@@ -417,7 +417,7 @@ static void BM_Encode_Api3(benchmark::State& s,
 
   std::string p010File{kTestImagesPath + "p010/" + testVectors[s.range(0)].first};
 
-  jpegr_uncompressed_struct rawP010Image{};
+  ultrahdr_uncompressed_struct rawP010Image{};
   if (!fillRawImageHandle(&rawP010Image, width, height, p010File, p010Cg, true)) {
     s.SkipWithError("unable to load file : " + p010File);
     return;
@@ -427,7 +427,7 @@ static void BM_Encode_Api3(benchmark::State& s,
 
   std::string yuv420JpegFile{(kTestImagesPath + "yuv420jpeg/" + testVectors[s.range(0)].second)};
 
-  jpegr_compressed_struct yuv420JpegImage{};
+  ultrahdr_compressed_struct yuv420JpegImage{};
   if (!fillJpgImageHandle(&yuv420JpegImage, yuv420JpegFile, ULTRAHDR_COLORGAMUT_P3)) {
     s.SkipWithError("unable to load file : " + yuv420JpegFile);
     return;
@@ -435,7 +435,7 @@ static void BM_Encode_Api3(benchmark::State& s,
   std::unique_ptr<uint8_t[]> yuv420jpegImgData;
   yuv420jpegImgData.reset(reinterpret_cast<uint8_t*>(yuv420JpegImage.data));
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.maxLength = (std::max)(static_cast<size_t>(8 * 1024) /* min size 8kb */,
                                   rawP010Image.width * rawP010Image.height * 3 * 2);
   jpegImgR.data = new uint8_t[jpegImgR.maxLength];
@@ -449,7 +449,7 @@ static void BM_Encode_Api3(benchmark::State& s,
   JpegR jpegHdr;
   for (auto _ : s) {
     status_t status = jpegHdr.encodeJPEGR(&rawP010Image, &yuv420JpegImage, tf, &jpegImgR);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("encodeJPEGR returned with error : " + std::to_string(status));
       return;
     }
@@ -466,7 +466,7 @@ static void BM_Encode_Api4(benchmark::State& s) {
   }
   int size = ifd.tellg();
 
-  jpegr_compressed_struct inpJpegImgR{};
+  ultrahdr_compressed_struct inpJpegImgR{};
   inpJpegImgR.length = size;
   inpJpegImgR.maxLength = size;
   inpJpegImgR.data = nullptr;
@@ -482,16 +482,16 @@ static void BM_Encode_Api4(benchmark::State& s) {
   JpegR jpegHdr;
   jpeg_info_struct primaryImgInfo;
   jpeg_info_struct gainmapImgInfo;
-  jpegr_info_struct info{};
+  ultrahdr_info_struct info{};
   info.primaryImgInfo = &primaryImgInfo;
   info.gainmapImgInfo = &gainmapImgInfo;
   status_t status = jpegHdr.getJPEGRInfo(&inpJpegImgR, &info);
-  if (JPEGR_NO_ERROR != status) {
+  if (ULTRAHDR_NO_ERROR != status) {
     s.SkipWithError("getJPEGRInfo returned with error " + std::to_string(status));
     return;
   }
 
-  jpegr_compressed_struct jpegImgR{};
+  ultrahdr_compressed_struct jpegImgR{};
   jpegImgR.maxLength = (std::max)(static_cast<size_t>(8 * 1024) /* min size 8kb */,
                                   info.width * info.height * 3 * 2);
   jpegImgR.data = new uint8_t[jpegImgR.maxLength];
@@ -502,11 +502,11 @@ static void BM_Encode_Api4(benchmark::State& s) {
   std::unique_ptr<uint8_t[]> jpegImgRData;
   jpegImgRData.reset(reinterpret_cast<uint8_t*>(jpegImgR.data));
 
-  jpegr_compressed_struct primaryImg;
+  ultrahdr_compressed_struct primaryImg;
   primaryImg.data = primaryImgInfo.imgData.data();
   primaryImg.maxLength = primaryImg.length = primaryImgInfo.imgData.size();
   primaryImg.colorGamut = static_cast<ultrahdr_color_gamut>(s.range(1));
-  jpegr_compressed_struct gainmapImg;
+  ultrahdr_compressed_struct gainmapImg;
   gainmapImg.data = gainmapImgInfo.imgData.data();
   gainmapImg.maxLength = gainmapImg.length = gainmapImgInfo.imgData.size();
   gainmapImg.colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED;
@@ -518,7 +518,7 @@ static void BM_Encode_Api4(benchmark::State& s) {
   }
   for (auto _ : s) {
     status = jpegHdr.encodeJPEGR(&primaryImg, &gainmapImg, &uhdr_metadata, &jpegImgR);
-    if (JPEGR_NO_ERROR != status) {
+    if (ULTRAHDR_NO_ERROR != status) {
       s.SkipWithError("encodeJPEGR returned with error " + std::to_string(status));
       return;
     }

@@ -19,7 +19,6 @@
 #include <fstream>
 #include <iostream>
 
-#include "ultrahdr/ultrahdrcommon.h"
 #include "ultrahdr/jpegdecoderhelper.h"
 #include "ultrahdr/icc.h"
 

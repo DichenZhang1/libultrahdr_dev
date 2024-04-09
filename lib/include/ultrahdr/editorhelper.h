@@ -26,18 +26,18 @@ typedef enum {
   ULTRAHDR_MIRROR_HORIZONTAL,
 } ultrahdr_mirroring_direction;
 
-status_t crop(jr_uncompressed_ptr const in_img,
-              int left, int right, int top, int bottom, jr_uncompressed_ptr out_img);
+status_t crop(uhdr_uncompressed_ptr const in_img,
+              int left, int right, int top, int bottom, uhdr_uncompressed_ptr out_img);
 
-status_t mirror(jr_uncompressed_ptr const in_img,
+status_t mirror(uhdr_uncompressed_ptr const in_img,
                 ultrahdr_mirroring_direction mirror_dir,
-                jr_uncompressed_ptr out_img);
+                uhdr_uncompressed_ptr out_img);
 
-status_t rotate(jr_uncompressed_ptr const in_img, int clockwise_degree,
-                jr_uncompressed_ptr out_img);
+status_t rotate(uhdr_uncompressed_ptr const in_img, int clockwise_degree,
+                uhdr_uncompressed_ptr out_img);
 
-status_t resize(jr_uncompressed_ptr const in_img, int out_width, int out_height,
-                jr_uncompressed_ptr out_img);
+status_t resize(uhdr_uncompressed_ptr const in_img, int out_width, int out_height,
+                uhdr_uncompressed_ptr out_img);
 
 }  // namespace ultrahdr
 

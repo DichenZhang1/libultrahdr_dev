@@ -20,7 +20,6 @@
 #include <memory>
 #include <random>
 
-#include "ultrahdr/ultrahdrcommon.h"
 #include "ultrahdr/gainmapmath.h"
 #include "ultrahdr/jpegr.h"
 
@@ -85,12 +84,12 @@ void UltraHdrEncFuzzer::fill420Buffer(uint8_t* data, int width, int height, int 
 
 void UltraHdrEncFuzzer::process() {
   while (mFdp.remaining_bytes()) {
-    struct jpegr_uncompressed_struct p010Img {};
-    struct jpegr_uncompressed_struct yuv420Img {};
-    struct jpegr_uncompressed_struct grayImg {};
-    struct jpegr_compressed_struct jpegImgR {};
-    struct jpegr_compressed_struct jpegImg {};
-    struct jpegr_compressed_struct jpegGainMap {};
+    struct ultrahdr_uncompressed_struct p010Img {};
+    struct ultrahdr_uncompressed_struct yuv420Img {};
+    struct ultrahdr_uncompressed_struct grayImg {};
+    struct ultrahdr_compressed_struct jpegImgR {};
+    struct ultrahdr_compressed_struct jpegImg {};
+    struct ultrahdr_compressed_struct jpegGainMap {};
 
     // which encode api to select
     int muxSwitch = mFdp.ConsumeIntegralInRange<int>(0, 4);
@@ -224,7 +223,7 @@ void UltraHdrEncFuzzer::process() {
 #endif
 
     JpegR jpegHdr;
-    status_t status = JPEGR_UNKNOWN_ERROR;
+    status_t status = ultrahdr_UNKNOWN_ERROR;
     if (muxSwitch == 0) {  // api 0
       jpegImgR.length = 0;
       status = jpegHdr.encodeJPEGR(&p010Img, tf, &jpegImgR, quality, nullptr);
@@ -234,7 +233,7 @@ void UltraHdrEncFuzzer::process() {
     } else {
       // compressed img
       JpegEncoderHelper encoder;
-      struct jpegr_uncompressed_struct yuv420ImgCopy = yuv420Img;
+      struct ultrahdr_uncompressed_struct yuv420ImgCopy = yuv420Img;
       if (yuv420ImgCopy.luma_stride == 0) yuv420ImgCopy.luma_stride = yuv420Img.width;
       if (!yuv420ImgCopy.chroma_data) {
         uint8_t* data = reinterpret_cast<uint8_t*>(yuv420Img.data);
@@ -288,19 +287,19 @@ void UltraHdrEncFuzzer::process() {
         }
       }
     }
-    if (status == JPEGR_NO_ERROR) {
-      jpegr_info_struct info{};
+    if (status == ultrahdr_NO_ERROR) {
+      ultrahdr_info_struct info{};
       status = jpegHdr.getJPEGRInfo(&jpegImgR, &info);
-      if (status == JPEGR_NO_ERROR) {
+      if (status == ultrahdr_NO_ERROR) {
         size_t outSize = info.width * info.height * ((of == ULTRAHDR_OUTPUT_HDR_LINEAR) ? 8 : 4);
-        jpegr_uncompressed_struct decodedJpegR;
+        ultrahdr_uncompressed_struct decodedJpegR;
         auto decodedRaw = std::make_unique<uint8_t[]>(outSize);
         decodedJpegR.data = decodedRaw.get();
         ultrahdr_metadata_struct metadata;
         status = jpegHdr.decodeJPEGR(&jpegImgR, &decodedJpegR,
                                      mFdp.ConsumeFloatingPointInRange<float>(1.0, FLT_MAX), nullptr,
                                      of, nullptr, &metadata);
-        if (status != JPEGR_NO_ERROR) {
+        if (status != ultrahdr_NO_ERROR) {
           ALOGE("encountered error during decoding %d", status);
         }
       } else {

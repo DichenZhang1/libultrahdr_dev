@@ -18,9 +18,6 @@
 #include <cmath>
 #include <string.h>
 
-#include <fstream>
-#include <iostream>
-
 #include "ultrahdr/editorhelper.h"
 
 using namespace std;

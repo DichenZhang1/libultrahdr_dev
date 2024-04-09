@@ -272,6 +272,19 @@ if(NOT JPEG_FOUND)
   )
 endif()
 
+# TODO: build libheif
+# The commands compling libheif
+#cmake --preset=release-noplugins \
+#	-DLIBDE265_LIBRARY="./../third-party/libde265/build/libde265/libde265.so" \
+#	-DLIBDE265_INCLUDE_DIR="./../third-party/libde265" \
+#	-DX265_LIBRARY="./../third-party/x265/build/libx265.so" \
+#	-DX265_INCLUDE_DIR="./../third-party/x265/source" \
+#	-DAOM_LIBRARY="./../third-party/aom/build/libaom.a" \
+#	-DAOM_INCLUDE_DIR="./../third-party/aom/" \
+#	..
+set(LIBHEIF_INCLUDE_DIRS ${THIRD_PARTY_DIR}/libheif ${CMAKE_CURRENT_BINARY_DIR}/libheif)
+set(LIBHEIF_LIBRARIES ${CMAKE_CURRENT_BINARY_DIR}/libheif/libheif/libheif.so)
+
 if(UHDR_BUILD_TESTS)
   # gtest and gmock
   set(GTEST_TARGET_NAME googletest)
@@ -355,8 +368,8 @@ file(GLOB UHDR_TEST_SRCS_LIST "${TESTS_DIR}/*.cpp")
 file(GLOB UHDR_BM_SRCS_LIST "${BENCHMARK_DIR}/*.cpp")
 file(GLOB IMAGE_IO_SRCS_LIST "${THIRD_PARTY_DIR}/image_io/src/**/*.cc")
 
-set(PRIVATE_INCLUDE_DIR ${SOURCE_DIR}/include/ ${JPEG_INCLUDE_DIRS})
-set(COMMON_LIBS_LIST ${JPEG_LIBRARIES} Threads::Threads)
+set(PRIVATE_INCLUDE_DIR ${SOURCE_DIR}/include/ ${JPEG_INCLUDE_DIRS} ${LIBHEIF_INCLUDE_DIRS})
+set(COMMON_LIBS_LIST ${JPEG_LIBRARIES} ${LIBHEIF_LIBRARIES} Threads::Threads)
 
 ###########################################################
 # Targets

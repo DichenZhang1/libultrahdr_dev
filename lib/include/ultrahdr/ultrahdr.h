@@ -19,6 +19,8 @@
 
 #include <string>
 
+#define WITH_EXPERIMENTAL_GAIN_MAP 1
+
 namespace ultrahdr {
 #define ULTRAHDR_CHECK(x)             \
   {                                   \
@@ -68,6 +70,20 @@ typedef enum {
   ULTRAHDR_PIX_FMT_RGBAF16,
   ULTRAHDR_PIX_FMT_RGBA1010102,
 } ultrahdr_pixel_format;
+
+// Supported codec
+typedef enum {
+  ULTRAHDR_CODEC_UNSPECIFIED = -1,
+  ULTRAHDR_CODEC_RAW_PIXELS,
+  ULTRAHDR_CODEC_JPEG,
+  ULTRAHDR_CODEC_JPEG_R,
+  ULTRAHDR_CODEC_HEIC,
+  ULTRAHDR_CODEC_HEIC_R,
+  ULTRAHDR_CODEC_HEIC_10_BIT,
+  ULTRAHDR_CODEC_AVIF,
+  ULTRAHDR_CODEC_AVIF_R,
+  ULTRAHDR_CODEC_AVIF_10_BIT,
+} ultrahdr_codec;
 
 typedef enum {
   ULTRAHDR_NO_ERROR = 0,
@@ -193,7 +209,7 @@ static const char* const kGainMapVersion = "1.0";
 static const size_t kMapDimensionScaleFactor = 4;
 
 class UltraHdr {
-public:
+protected:
   /*
    * This method is called in the encoding pipeline. It will take the uncompressed 8-bit and
    * 10-bit yuv images as input, and calculate the uncompressed gain map. The input images

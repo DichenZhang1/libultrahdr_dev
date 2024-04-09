@@ -20,6 +20,7 @@
 #include <memory>
 #include <random>
 
+#include "ultrahdr/ultrahdrcommon.h"
 #include "ultrahdr/gainmapmath.h"
 #include "ultrahdr/jpegr.h"
 
@@ -223,7 +224,7 @@ void UltraHdrEncFuzzer::process() {
 #endif
 
     JpegR jpegHdr;
-    status_t status = ultrahdr_UNKNOWN_ERROR;
+    status_t status = ULTRAHDR_UNKNOWN_ERROR;
     if (muxSwitch == 0) {  // api 0
       jpegImgR.length = 0;
       status = jpegHdr.encodeJPEGR(&p010Img, tf, &jpegImgR, quality, nullptr);
@@ -268,7 +269,7 @@ void UltraHdrEncFuzzer::process() {
             jpegGainMap.data = gainMapEncoder.getCompressedImagePtr();
             jpegGainMap.colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED;
             ultrahdr_metadata_struct metadata;
-            metadata.version = kJpegrVersion;
+            metadata.version = kGainMapVersion;
             if (tf == ULTRAHDR_TF_HLG) {
               metadata.maxContentBoost = kHlgMaxNits / kSdrWhiteNits;
             } else if (tf == ULTRAHDR_TF_PQ) {
@@ -287,10 +288,10 @@ void UltraHdrEncFuzzer::process() {
         }
       }
     }
-    if (status == ultrahdr_NO_ERROR) {
-      ultrahdr_info_struct info{};
+    if (status == ULTRAHDR_NO_ERROR) {
+      jpegr_info_struct info{};
       status = jpegHdr.getJPEGRInfo(&jpegImgR, &info);
-      if (status == ultrahdr_NO_ERROR) {
+      if (status == ULTRAHDR_NO_ERROR) {
         size_t outSize = info.width * info.height * ((of == ULTRAHDR_OUTPUT_HDR_LINEAR) ? 8 : 4);
         ultrahdr_uncompressed_struct decodedJpegR;
         auto decodedRaw = std::make_unique<uint8_t[]>(outSize);
@@ -299,7 +300,7 @@ void UltraHdrEncFuzzer::process() {
         status = jpegHdr.decodeJPEGR(&jpegImgR, &decodedJpegR,
                                      mFdp.ConsumeFloatingPointInRange<float>(1.0, FLT_MAX), nullptr,
                                      of, nullptr, &metadata);
-        if (status != ultrahdr_NO_ERROR) {
+        if (status != ULTRAHDR_NO_ERROR) {
           ALOGE("encountered error during decoding %d", status);
         }
       } else {

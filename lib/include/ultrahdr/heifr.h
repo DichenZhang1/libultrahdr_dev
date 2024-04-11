@@ -69,7 +69,7 @@ public:
   size_t capacity_;
 };
 
-class HeifR : public UltraHdr{
+class HeifR : public UltraHdr {
 public:
   /*
    * Experimental only
@@ -128,6 +128,32 @@ public:
                                  uhdr_exif_ptr exif);
 
   /*
+   * Encode API-x
+   * Compress HEIFR image from SDR YUV and raw gain map.
+   *
+   * This method is only used for transcoding case.
+   *
+   * @param yuv420_image_ptr uncompressed SDR image in YUV_420 color format
+   * @param gainmap_image_ptr uncompressed gain map image in Y single channel color format
+   * @param metadata gain map metadata to be written in the primary image
+   * @param dest destination of the compressed HEIFR image. Please note that {@code maxLength}
+   *             represents the maximum available size of the desitination buffer, and it must be
+   *             set before calling this method. If the encoded HEIFR size exceeds
+   *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
+   * @param quality target quality of the JPEG encoding, must be in range of 0-100 where 100 is
+   *                the highest quality
+   * @param exif pointer to the exif metadata.
+   * @param codec target output image codec (HEIC for HEVC codec, AVIF for AV1 codec)
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t encodeHeifWithGainMap(uhdr_uncompressed_ptr yuv420_image_ptr,
+                                 uhdr_uncompressed_ptr gainmap_image_ptr,
+                                 ultrahdr_metadata_ptr metadata,
+                                 uhdr_compressed_ptr dest, int quality,
+                                 ultrahdr_codec codec,
+                                 uhdr_exif_ptr exif);
+
+  /*
    * Decode API
    * Decompress HEIFR image.
    *
@@ -175,32 +201,6 @@ public:
                                  ultrahdr_output_format output_format = ULTRAHDR_OUTPUT_HDR_LINEAR,
                                  uhdr_uncompressed_ptr gainmap_image_ptr = nullptr,
                                  ultrahdr_metadata_ptr metadata = nullptr);
-protected:
-  /*
-   * Encode API-x
-   * Compress HEIFR image from SDR YUV and raw gain map.
-   *
-   * This method is only used for transcoding case.
-   *
-   * @param yuv420_image_ptr uncompressed SDR image in YUV_420 color format
-   * @param gainmap_image_ptr uncompressed gain map image in Y single channel color format
-   * @param metadata gain map metadata to be written in the primary image
-   * @param dest destination of the compressed HEIFR image. Please note that {@code maxLength}
-   *             represents the maximum available size of the desitination buffer, and it must be
-   *             set before calling this method. If the encoded HEIFR size exceeds
-   *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
-   * @param quality target quality of the JPEG encoding, must be in range of 0-100 where 100 is
-   *                the highest quality
-   * @param exif pointer to the exif metadata.
-   * @param codec target output image codec (HEIC for HEVC codec, AVIF for AV1 codec)
-   * @return NO_ERROR if encoding succeeds, error code if error occurs.
-   */
-  status_t encodeHeifWithGainMap(uhdr_uncompressed_ptr yuv420_image_ptr,
-                                 uhdr_uncompressed_ptr gainmap_image_ptr,
-                                 ultrahdr_metadata_ptr metadata,
-                                 uhdr_compressed_ptr dest, int quality,
-                                 ultrahdr_codec codec,
-                                 uhdr_exif_ptr exif);
 };
 }  // namespace ultrahdr
 

@@ -359,4 +359,90 @@ status_t resize(uhdr_uncompressed_ptr const in_img, int out_width, int out_heigh
   return ULTRAHDR_NO_ERROR;
 }
 
+status_t addEffects(uhdr_uncompressed_ptr const in_img, std::vector<ultrahdr_effect*>& effects,
+                    uhdr_uncompressed_ptr out_img) {
+  if (in_img == nullptr || in_img->data == nullptr ||
+      out_img == nullptr || out_img->data == nullptr) {
+    return ERROR_ULTRAHDR_BAD_PTR;
+  }
+
+  bool isSingleChannel = (in_img->pixelFormat == ULTRAHDR_PIX_FMT_MONOCHROME);
+
+  ultrahdr_uncompressed_struct tmp;
+  uhdr_uncompressed_ptr last = in_img;
+  int size = in_img->width * in_img->height;
+
+   if (!isSingleChannel) {
+     size = size * 3 / 2;
+   }
+
+  out_img->width = in_img->width;
+  out_img->height = in_img->height;
+  out_img->colorGamut = in_img->colorGamut;
+  out_img->pixelFormat = in_img->pixelFormat;
+  out_img->luma_stride = in_img->luma_stride;
+  out_img->chroma_stride = in_img->chroma_stride;
+  memcpy(out_img->data, in_img->data, size);
+
+  for (auto e : effects) {
+    unique_ptr<uint8_t[]> tmp_data;
+    if (ultrahdr_crop_effect* effect = dynamic_cast<ultrahdr_crop_effect*>(e); effect != nullptr) {
+      size = (effect->bottom - effect->top + 1) * (effect->right - effect->left + 1);
+      if (!isSingleChannel) {
+        size = size * 3 / 2;
+      }
+      tmp_data.reset(new uint8_t[size]);
+      tmp.data = tmp_data.get();
+      crop(last, effect->left, effect->right, effect->top, effect->bottom, &tmp);
+    } else if (ultrahdr_mirror_effect* effect = dynamic_cast<ultrahdr_mirror_effect*>(e); effect != nullptr) {
+      size = last->width * last->height;
+      if (!isSingleChannel) {
+        size = size * 3 / 2;
+      }
+      tmp_data.reset(new uint8_t[size]);
+      tmp.data = tmp_data.get();
+      mirror(last, effect->mirror_dir, &tmp);
+
+    } else if (ultrahdr_rotate_effect* effect = dynamic_cast<ultrahdr_rotate_effect*>(e); effect != nullptr) {
+      size = last->width * last->height;
+      if (!isSingleChannel) {
+        size = size * 3 / 2;
+      }
+      tmp_data.reset(new uint8_t[size]);
+
+      tmp.data = tmp_data.get();
+
+      rotate(last, effect->clockwise_degree, &tmp);
+
+    } else if (ultrahdr_resize_effect* effect = dynamic_cast<ultrahdr_resize_effect*>(e); effect != nullptr) {
+      size = effect->new_width * effect->new_height;
+      if (!isSingleChannel) {
+        size = size * 3 / 2;
+      }
+      tmp_data.reset(new uint8_t[size]);
+      tmp.data = tmp_data.get();
+      resize(last, effect->new_width, effect->new_height, &tmp);
+    } else {
+      // should not happen
+    }
+
+    // deep copy
+    out_img->width = tmp.width;
+    out_img->height = tmp.height;
+    out_img->colorGamut = tmp.colorGamut;
+    out_img->pixelFormat = tmp.pixelFormat;
+    out_img->luma_stride = tmp.luma_stride;
+    out_img->chroma_stride = tmp.chroma_stride;
+
+    memcpy(out_img->data, tmp.data, size);
+    if (!isSingleChannel) {
+      out_img->chroma_data = (uint8_t*) out_img->data + out_img->luma_stride * out_img->height;
+    }
+
+    last = out_img;
+  }
+
+  return ULTRAHDR_NO_ERROR;
+}
+
 }  // namespace ultrahdr

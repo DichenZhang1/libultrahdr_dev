@@ -26,6 +26,26 @@ typedef enum {
   ULTRAHDR_MIRROR_HORIZONTAL,
 } ultrahdr_mirroring_direction;
 
+typedef struct ultrahdr_crop_effect_struct : ultrahdr_effect {
+  int left;
+  int right;
+  int top;
+  int bottom;
+} ultrahdr_crop_effect;
+
+typedef struct ultrahdr_mirror_effect_struct : ultrahdr_effect {
+  ultrahdr_mirroring_direction mirror_dir;
+} ultrahdr_mirror_effect;
+
+typedef struct ultrahdr_rotate_effect_struct : ultrahdr_effect {
+  int clockwise_degree;
+} ultrahdr_rotate_effect;
+
+typedef struct ultrahdr_resize_effect_struct : ultrahdr_effect {
+  int new_width;
+  int new_height;
+} ultrahdr_resize_effect;
+
 status_t crop(uhdr_uncompressed_ptr const in_img,
               int left, int right, int top, int bottom, uhdr_uncompressed_ptr out_img);
 
@@ -38,6 +58,9 @@ status_t rotate(uhdr_uncompressed_ptr const in_img, int clockwise_degree,
 
 status_t resize(uhdr_uncompressed_ptr const in_img, int out_width, int out_height,
                 uhdr_uncompressed_ptr out_img);
+
+status_t addEffects(uhdr_uncompressed_ptr const in_img, std::vector<ultrahdr_effect*>& effects,
+                    uhdr_uncompressed_ptr out_image);
 
 }  // namespace ultrahdr
 

@@ -511,4 +511,88 @@ TEST_F(EditorHelperTest, resizeGreyImageDown) {
   }
 #endif
 }
+
+TEST_F(EditorHelperTest, editingCombinationYuvImageWithNoEditing) {
+  jpegr_uncompressed_struct in_img;
+  jpegr_uncompressed_struct out_img;
+
+  in_img.data = mYuvImage.buffer.get();
+  in_img.width = IMAGE_WIDTH;
+  in_img.height = IMAGE_HEIGHT;
+  in_img.colorGamut = ultrahdr_color_gamut::ULTRAHDR_COLORGAMUT_BT709;
+  in_img.pixelFormat = ultrahdr_pixel_format::ULTRAHDR_PIX_FMT_YUV420;
+
+  std::unique_ptr<uint8_t[]> out_img_data;
+  out_img_data.reset(new uint8_t[MAX_BUFFER_SIZE]);
+  out_img.data = out_img_data.get();
+
+  std::vector<ultrahdr_effect*> effects;
+  int out_width = IMAGE_WIDTH;
+  int out_height = IMAGE_HEIGHT;
+  int outSize = out_width * out_height * 3 / 2;
+
+  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== JPEGR_NO_ERROR);
+  EXPECT_TRUE(out_img.width = out_width);
+  EXPECT_TRUE(out_img.height = out_height);
+  EXPECT_TRUE(out_img.colorGamut == in_img.colorGamut);
+  EXPECT_TRUE(out_img.pixelFormat == in_img.pixelFormat);
+
+#ifdef DUMP_OUTPUT
+  if (!writeFile("editing_combination_no_editing.yuv", out_img.data, outSize)) {
+    std::cerr << "unable to write output file" << std::endl;
+  }
+#endif
+}
+
+TEST_F(EditorHelperTest, editingCombinationYuvImage) {
+  jpegr_uncompressed_struct in_img;
+  jpegr_uncompressed_struct out_img;
+
+  in_img.data = mYuvImage.buffer.get();
+  in_img.width = IMAGE_WIDTH;
+  in_img.height = IMAGE_HEIGHT;
+  in_img.colorGamut = ultrahdr_color_gamut::ULTRAHDR_COLORGAMUT_BT709;
+  in_img.pixelFormat = ultrahdr_pixel_format::ULTRAHDR_PIX_FMT_YUV420;
+
+  std::vector<ultrahdr_effect*> effects;
+  ultrahdr_resize_effect resizeEffect;
+  resizeEffect.new_width = IMAGE_WIDTH * 3 / 4;
+  resizeEffect.new_height = IMAGE_HEIGHT * 3 / 4;
+  effects.push_back(&resizeEffect);
+
+  ultrahdr_mirror_effect mirrorEffect;
+  mirrorEffect.mirror_dir = ULTRAHDR_MIRROR_VERTICAL;
+  effects.push_back(&mirrorEffect);
+
+  ultrahdr_rotate_effect rotateEffect;
+  rotateEffect.clockwise_degree = 900;
+  effects.push_back(&rotateEffect);
+
+  ultrahdr_crop_effect cropEffect;
+  cropEffect.top = 10;
+  cropEffect.bottom = 99;
+  cropEffect.left = 20;
+  cropEffect.right = 149;
+  effects.push_back(&cropEffect);
+
+  std::unique_ptr<uint8_t[]> out_img_data;
+  out_img_data.reset(new uint8_t[MAX_BUFFER_SIZE]);
+  out_img.data = out_img_data.get();
+  int out_width = cropEffect.right - cropEffect.left + 1;
+  int out_height = cropEffect.bottom - cropEffect.top + 1;
+  int outSize = out_width * out_height * 3 / 2;
+
+  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== JPEGR_NO_ERROR);
+  EXPECT_TRUE(out_img.width = out_width);
+  EXPECT_TRUE(out_img.height = out_height);
+  EXPECT_TRUE(out_img.colorGamut == in_img.colorGamut);
+  EXPECT_TRUE(out_img.pixelFormat == in_img.pixelFormat);
+
+#ifdef DUMP_OUTPUT
+  if (!writeFile("editing_combination.yuv", out_img.data, outSize)) {
+    std::cerr << "unable to write output file" << std::endl;
+  }
+#endif
+}
+
 }  // namespace ultrahdr

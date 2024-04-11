@@ -560,6 +560,77 @@ status_t JpegR::encodeJPEGR(uhdr_compressed_ptr yuv420jpg_image_ptr,
   return ULTRAHDR_NO_ERROR;
 }
 
+/* Encode API-x */
+status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompressed_ptr gainmap_image_ptr,
+                            ultrahdr_metadata_ptr metadata, uhdr_compressed_ptr dest, int quality,
+                            uhdr_exif_ptr exif) {
+  if (quality < 0 || quality > 100) {
+    return ERROR_ULTRAHDR_INVALID_QUALITY_FACTOR;
+  }
+  if (yuv420_image_ptr == nullptr || yuv420_image_ptr->data == nullptr) {
+    return ERROR_ULTRAHDR_BAD_PTR;
+  }
+  if (gainmap_image_ptr == nullptr || gainmap_image_ptr->data == nullptr) {
+    return ERROR_ULTRAHDR_BAD_PTR;
+  }
+  if (metadata == nullptr) {
+    return ERROR_ULTRAHDR_BAD_PTR;
+  }
+
+  printf("[dichenzhang] encodeJPEGR() api-x: pos 1\n");
+
+  // clean up input structure for later usage
+  ultrahdr_uncompressed_struct yuv420_image = *yuv420_image_ptr;
+  if (yuv420_image.luma_stride == 0) yuv420_image.luma_stride = yuv420_image.width;
+  if (!yuv420_image.chroma_data) {
+    uint8_t* data = reinterpret_cast<uint8_t*>(yuv420_image.data);
+    yuv420_image.chroma_data = data + yuv420_image.luma_stride * yuv420_image.height;
+    yuv420_image.chroma_stride = yuv420_image.luma_stride >> 1;
+  }
+
+  printf("[dichenzhang] encodeJPEGR() api-x: pos 2\n");
+
+  // compress gain map
+  JpegEncoderHelper jpeg_enc_obj_gm;
+  ULTRAHDR_CHECK(compressGainMap(gainmap_image_ptr, &jpeg_enc_obj_gm));
+  ultrahdr_compressed_struct compressed_map;
+  compressed_map.data = jpeg_enc_obj_gm.getCompressedImagePtr();
+  compressed_map.length = static_cast<int>(jpeg_enc_obj_gm.getCompressedImageSize());
+  compressed_map.maxLength = static_cast<int>(jpeg_enc_obj_gm.getCompressedImageSize());
+  compressed_map.colorGamut = ULTRAHDR_COLORGAMUT_UNSPECIFIED;
+
+  std::shared_ptr<DataStruct> icc =
+      IccHelper::writeIccProfile(ULTRAHDR_TF_SRGB, yuv420_image.colorGamut);
+
+      printf("[dichenzhang] encodeJPEGR() api-x: pos 3\n");
+
+  // compress 420 image
+  JpegEncoderHelper jpeg_enc_obj_yuv420;
+  if (!jpeg_enc_obj_yuv420.compressImage(
+          reinterpret_cast<uint8_t*>(yuv420_image.data),
+          reinterpret_cast<uint8_t*>(yuv420_image.chroma_data), yuv420_image.width,
+          yuv420_image.height, yuv420_image.luma_stride,
+          yuv420_image.chroma_stride, quality, icc->getData(), icc->getLength())) {
+    return ERROR_ULTRAHDR_ENCODE_ERROR;
+  }
+
+  printf("[dichenzhang] encodeJPEGR() api-x: pos 4\n");
+
+  ultrahdr_compressed_struct jpeg;
+  jpeg.data = jpeg_enc_obj_yuv420.getCompressedImagePtr();
+  jpeg.length = static_cast<int>(jpeg_enc_obj_yuv420.getCompressedImageSize());
+  jpeg.maxLength = static_cast<int>(jpeg_enc_obj_yuv420.getCompressedImageSize());
+  jpeg.colorGamut = yuv420_image.colorGamut;
+
+ // append gain map, no ICC since JPEG encode already did it
+  ULTRAHDR_CHECK(appendGainMap(&jpeg, &compressed_map, exif, /* icc */ nullptr, /* icc size */ 0,
+                            metadata, dest));
+
+printf("[dichenzhang] encodeJPEGR() api-x: pos 5\n");
+
+  return ULTRAHDR_NO_ERROR;
+}
+
 status_t JpegR::getJPEGRInfo(uhdr_compressed_ptr ultrahdr_image_ptr, uhdr_info_ptr ultrahdr_image_info_ptr) {
   if (ultrahdr_image_ptr == nullptr || ultrahdr_image_ptr->data == nullptr) {
     ALOGE("received nullptr for compressed jpegr image");
@@ -891,32 +962,53 @@ status_t JpegR::appendGainMap(uhdr_compressed_ptr primary_jpg_image_ptr,
                               uhdr_compressed_ptr gainmap_jpg_image_ptr, uhdr_exif_ptr pExif,
                               void* pIcc, size_t icc_size, ultrahdr_metadata_ptr metadata,
                               uhdr_compressed_ptr dest) {
+
+                              printf("[dichenzhang] appendGainMap(): pos 1\n");
+
+
   if (primary_jpg_image_ptr == nullptr || gainmap_jpg_image_ptr == nullptr || metadata == nullptr ||
       dest == nullptr) {
     return ERROR_ULTRAHDR_BAD_PTR;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 2\n");
+
   if (metadata->version.compare("1.0")) {
     ALOGE("received bad value for version: %s", metadata->version.c_str());
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 3\n");
+
   if (metadata->maxContentBoost < metadata->minContentBoost) {
     ALOGE("received bad value for content boost min %f, max %f", metadata->minContentBoost,
           metadata->maxContentBoost);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 4\n");
+
   if (metadata->hdrCapacityMax < metadata->hdrCapacityMin || metadata->hdrCapacityMin < 1.0f) {
     ALOGE("received bad value for hdr capacity min %f, max %f", metadata->hdrCapacityMin,
           metadata->hdrCapacityMax);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 5\n");
+
   if (metadata->offsetSdr < 0.0f || metadata->offsetHdr < 0.0f) {
     ALOGE("received bad value for offset sdr %f, hdr %f", metadata->offsetSdr, metadata->offsetHdr);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 6\n");
+
   if (metadata->gamma <= 0.0f) {
     ALOGE("received bad value for gamma %f", metadata->gamma);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
+
+  printf("[dichenzhang] appendGainMap(): pos 7\n");
 
   const string nameSpace = "http://ns.adobe.com/xap/1.0/";
   const int nameSpaceLength = nameSpace.size() + 1;  // need to count the null terminator

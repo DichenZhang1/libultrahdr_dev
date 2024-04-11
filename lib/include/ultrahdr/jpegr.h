@@ -230,6 +230,40 @@ class JpegR : public UltraHdr {
    */
   status_t getJPEGRInfo(uhdr_compressed_ptr jpegr_image_ptr, uhdr_info_ptr jpeg_image_info_ptr);
 
+  /*
+   * This method is called to separate primary image and gain map image from JPEGR
+   *
+   * @param jpegr_image_ptr pointer to compressed JPEGR image.
+   * @param primary_jpg_image_ptr destination of primary image
+   * @param gainmap_jpg_image_ptr destination of compressed gain map image
+   * @return NO_ERROR if calculation succeeds, error code if error occurs.
+   */
+  static status_t extractPrimaryImageAndGainMap(uhdr_compressed_ptr jpegr_image_ptr,
+                                                uhdr_compressed_ptr primary_jpg_image_ptr,
+                                                uhdr_compressed_ptr gainmap_jpg_image_ptr);
+
+  /*
+   * Encode API-x
+   * Compress JPEGR image from SDR YUV and raw gain map.
+   *
+   * This method is only used for transcoding case.
+   *
+   * @param yuv420_image_ptr uncompressed SDR image in YUV_420 color format
+   * @param gainmap_image_ptr uncompressed gain map image in Y single channel color format
+   * @param metadata metadata to be written in XMP of the primary jpeg
+   * @param dest destination of the compressed JPEGR image. Please note that {@code maxLength}
+   *             represents the maximum available size of the desitination buffer, and it must be
+   *             set before calling this method. If the encoded JPEGR size exceeds
+   *             {@code maxLength}, this method will return {@code ERROR_JPEGR_BUFFER_TOO_SMALL}.
+   * @param quality target quality of the JPEG encoding, must be in range of 0-100 where 100 is
+   *                the highest quality
+   * @param exif pointer to the exif metadata.
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompressed_ptr gainmap_image_ptr,
+                       ultrahdr_metadata_ptr metadata, uhdr_compressed_ptr dest, int quality,
+                       uhdr_exif_ptr exif);
+
  private:
   /*
    * This method is called in the encoding pipeline. It will encode the gain map.
@@ -240,18 +274,6 @@ class JpegR : public UltraHdr {
    */
   status_t compressGainMap(uhdr_uncompressed_ptr gainmap_image_ptr,
                            JpegEncoderHelper* jpeg_enc_obj_ptr);
-
-  /*
-   * This method is called to separate primary image and gain map image from JPEGR
-   *
-   * @param jpegr_image_ptr pointer to compressed JPEGR image.
-   * @param primary_jpg_image_ptr destination of primary image
-   * @param gainmap_jpg_image_ptr destination of compressed gain map image
-   * @return NO_ERROR if calculation succeeds, error code if error occurs.
-   */
-  status_t extractPrimaryImageAndGainMap(uhdr_compressed_ptr jpegr_image_ptr,
-                                         uhdr_compressed_ptr primary_jpg_image_ptr,
-                                         uhdr_compressed_ptr gainmap_jpg_image_ptr);
 
   /*
    * Gets Info from JPEG image without decoding it.

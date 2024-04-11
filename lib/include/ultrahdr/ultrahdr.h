@@ -17,7 +17,9 @@
 #ifndef ULTRAHDR_ULTRAHDR_H
 #define ULTRAHDR_ULTRAHDR_H
 
+#include <memory>
 #include <string>
+#include <vector>
 
 #define WITH_EXPERIMENTAL_GAIN_MAP 1
 
@@ -57,7 +59,8 @@ typedef enum {
   ULTRAHDR_OUTPUT_HDR_LINEAR,  // HDR in F16 color format (linear)
   ULTRAHDR_OUTPUT_HDR_PQ,      // HDR in RGBA_1010102 color format (PQ transfer function)
   ULTRAHDR_OUTPUT_HDR_HLG,     // HDR in RGBA_1010102 color format (HLG transfer function)
-  ULTRAHDR_OUTPUT_MAX = ULTRAHDR_OUTPUT_HDR_HLG,
+  ULTRAHDR_OUTPUT_HDR_LINEAR_RGB_10BIT,
+  ULTRAHDR_OUTPUT_MAX = ULTRAHDR_OUTPUT_HDR_LINEAR_RGB_10BIT,
 } ultrahdr_output_format;
 
 // Supported pixel format
@@ -111,6 +114,7 @@ typedef enum {
   ERROR_ULTRAHDR_NO_IMAGES_FOUND = ULTRAHDR_RUNTIME_ERROR_BASE - 6,
   ERROR_ULTRAHDR_MULTIPLE_EXIFS_RECEIVED = ULTRAHDR_RUNTIME_ERROR_BASE - 7,
   ERROR_ULTRAHDR_UNSUPPORTED_MAP_SCALE_FACTOR = ULTRAHDR_RUNTIME_ERROR_BASE - 8,
+  ERROR_ULTRAHDR_INSUFFICIENT_RESOURCE = ULTRAHDR_RUNTIME_ERROR_BASE - 9,
 
   ERROR_ULTRAHDR_UNSUPPORTED_FEATURE = -30000,
 } status_t;
@@ -208,7 +212,124 @@ static const char* const kGainMapVersion = "1.0";
 // Map is quarter res / sixteenth size
 static const size_t kMapDimensionScaleFactor = 4;
 
+typedef struct ultrahdr_effect_struct {
+  virtual ~ultrahdr_effect_struct() = default;
+} ultrahdr_effect;
+
+/**
+ * Holds configuration information.
+ */
+typedef struct ultrahdr_configuration_struct {
+  // The encoding quality of the primary image for encoding, or the output image for
+  // transcoding, in the range of 0~100.
+  int quality;
+  // The encoding quality of the gain map, in the range of 0~100.
+  // TODO:
+//  int gain_map_quality;
+  // Color gamut.
+  ultrahdr_color_gamut colorGamut;
+  // HDR transfer function
+  ultrahdr_transfer_function transferFunction;
+  // The codec for the output image
+  ultrahdr_codec outputCodec;
+  // Pixel format
+  ultrahdr_pixel_format pixelFormat;
+  // Editing effects
+  std::vector<ultrahdr_effect*> effects;
+  //
+  float maxDisplayBoost;
+} ultrahdr_configuration;
+
 class UltraHdr {
+public:
+  /**
+   * Adding input image to the library.
+   *
+   * @param image input image.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t addImage(ultrahdr_compressed_struct* image);
+
+  /**
+   * Adding input image to the library.
+   *
+   * @param image input image.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t addImage(ultrahdr_uncompressed_struct* image);
+
+  /**
+   * Adding input gain map to the library.
+   * (Gain map image and metadata may be calculated from outside this library)
+   *
+   * @param gainMapImage input gain map image.
+   * @param gainMapMetadata input gain map metadata.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t addGainMap(ultrahdr_compressed_struct* gainMapImage,
+                      ultrahdr_metadata_struct* gainMapMetadata);
+
+  /**
+   * Adding EXIF metadata to the library.
+   *
+   * @param exif EXIF metadata.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t addExif(ultrahdr_exif_struct* exif);
+
+  /**
+   * Extracts the EXIF metadata from the input image.
+   *
+   * @param dest destination of the EXIF.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t getExif(ultrahdr_exif_struct*& dest);
+
+  /**
+   * Extracts the gain map from the input image.
+   *
+   * @param dest destination of the gain map.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t getGainMap(ultrahdr_uncompressed_struct*& dest);
+
+  /**
+   * Extracts the gain map related metadata from the input image.
+   *
+   * @param dest destination of the metadata.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t getGainMapMetadata(ultrahdr_metadata_ptr& metadata);
+
+  /**
+   * API-1
+   * Converts the input image(s) to target format.
+   *
+   * @param config configure from user.
+   * @param dest destination of the output image.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t convert(ultrahdr_configuration* config, uhdr_compressed_ptr& dest);
+
+  /**
+   * API-2
+   * Converts the input image(s) to target format.
+   *
+   * @param config configure from user.
+   * @param dest destination of the output image.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t convert(ultrahdr_configuration* config, uhdr_uncompressed_ptr& dest);
+
 protected:
   /*
    * This method is called in the encoding pipeline. It will take the uncompressed 8-bit and
@@ -258,6 +379,47 @@ protected:
    * @param dest pointer to store tonemapped SDR image
    */
   status_t toneMap(uhdr_uncompressed_ptr src, uhdr_uncompressed_ptr dest);
+
+private:
+  /**
+   * When {@code sdr_jpeg_img} is available but {@code sdr_raw_img} is empty, decode the SDR JPEG
+   * image and extract the EXIF.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t maybeDecodeJpegSdr();
+
+  /**
+   * When {@code hdr_raw_img} is available but {@code sdr_raw_img} is empty, tone map the raw HDR
+   * image.
+   *
+   * @return NO_ERROR if encoding succeeds, error code if error occurs.
+   */
+  status_t maybeToneMapRawHdr();
+
+  void createOutputMemory(int size, void*& dest);
+
+  std::shared_ptr<ultrahdr_uncompressed_struct> sdr_raw_img       = nullptr;
+  std::shared_ptr<ultrahdr_uncompressed_struct> hdr_raw_img       = nullptr;
+  std::shared_ptr<ultrahdr_uncompressed_struct> gain_map_raw_img  = nullptr;
+  std::shared_ptr<ultrahdr_exif_struct>         exif              = nullptr;
+  std::shared_ptr<ultrahdr_compressed_struct>   sdr_jpeg_img      = nullptr;
+  std::shared_ptr<ultrahdr_compressed_struct>   sdr_heif_img      = nullptr;
+  std::shared_ptr<ultrahdr_compressed_struct>   gain_map_jpeg_img = nullptr;
+  std::shared_ptr<ultrahdr_metadata_struct>  gain_map_metadata = nullptr;
+
+
+//  shared_ptr<ultrahdr_uncompressed_image> recon_hdr_img = nullptr;  // linear RGBA1010102 color space
+
+  std::shared_ptr<uint8_t[]> sdr_raw_img_data       = nullptr;
+  std::shared_ptr<uint8_t[]> hdr_raw_img_data       = nullptr;
+  std::shared_ptr<uint8_t[]> gain_map_raw_img_data  = nullptr;
+  std::shared_ptr<uint8_t[]> exif_data              = nullptr;
+  std::shared_ptr<uint8_t[]> sdr_jpeg_img_data      = nullptr;
+  std::shared_ptr<uint8_t[]> sdr_heif_img_data      = nullptr;
+  std::shared_ptr<uint8_t[]> gain_map_jpeg_img_data = nullptr;
+
+  std::vector<std::shared_ptr<uint8_t[]>> shared_output_data;
 };
 
 

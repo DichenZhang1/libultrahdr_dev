@@ -24,6 +24,8 @@
 
 //#define DUMP_OUTPUT
 
+#define MAX_BUFFER_SIZE 3840 * 2160 * 3 / 2
+
 #ifdef DUMP_OUTPUT
 static bool writeFile(const char* filename, void*& result, int length) {
   std::ofstream ofd(filename, std::ios::binary);
@@ -513,8 +515,8 @@ TEST_F(EditorHelperTest, resizeGreyImageDown) {
 }
 
 TEST_F(EditorHelperTest, editingCombinationYuvImageWithNoEditing) {
-  jpegr_uncompressed_struct in_img;
-  jpegr_uncompressed_struct out_img;
+  ultrahdr_uncompressed_struct in_img;
+  ultrahdr_uncompressed_struct out_img;
 
   in_img.data = mYuvImage.buffer.get();
   in_img.width = IMAGE_WIDTH;
@@ -531,7 +533,7 @@ TEST_F(EditorHelperTest, editingCombinationYuvImageWithNoEditing) {
   int out_height = IMAGE_HEIGHT;
   int outSize = out_width * out_height * 3 / 2;
 
-  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== JPEGR_NO_ERROR);
+  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== ULTRAHDR_NO_ERROR);
   EXPECT_TRUE(out_img.width = out_width);
   EXPECT_TRUE(out_img.height = out_height);
   EXPECT_TRUE(out_img.colorGamut == in_img.colorGamut);
@@ -545,8 +547,8 @@ TEST_F(EditorHelperTest, editingCombinationYuvImageWithNoEditing) {
 }
 
 TEST_F(EditorHelperTest, editingCombinationYuvImage) {
-  jpegr_uncompressed_struct in_img;
-  jpegr_uncompressed_struct out_img;
+  ultrahdr_uncompressed_struct in_img;
+  ultrahdr_uncompressed_struct out_img;
 
   in_img.data = mYuvImage.buffer.get();
   in_img.width = IMAGE_WIDTH;
@@ -582,7 +584,7 @@ TEST_F(EditorHelperTest, editingCombinationYuvImage) {
   int out_height = cropEffect.bottom - cropEffect.top + 1;
   int outSize = out_width * out_height * 3 / 2;
 
-  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== JPEGR_NO_ERROR);
+  EXPECT_TRUE(addEffects(&in_img, effects, &out_img)== ULTRAHDR_NO_ERROR);
   EXPECT_TRUE(out_img.width = out_width);
   EXPECT_TRUE(out_img.height = out_height);
   EXPECT_TRUE(out_img.colorGamut == in_img.colorGamut);

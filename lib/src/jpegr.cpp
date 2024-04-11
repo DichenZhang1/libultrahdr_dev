@@ -577,8 +577,6 @@ status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompr
     return ERROR_ULTRAHDR_BAD_PTR;
   }
 
-  printf("[dichenzhang] encodeJPEGR() api-x: pos 1\n");
-
   // clean up input structure for later usage
   ultrahdr_uncompressed_struct yuv420_image = *yuv420_image_ptr;
   if (yuv420_image.luma_stride == 0) yuv420_image.luma_stride = yuv420_image.width;
@@ -587,8 +585,6 @@ status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompr
     yuv420_image.chroma_data = data + yuv420_image.luma_stride * yuv420_image.height;
     yuv420_image.chroma_stride = yuv420_image.luma_stride >> 1;
   }
-
-  printf("[dichenzhang] encodeJPEGR() api-x: pos 2\n");
 
   // compress gain map
   JpegEncoderHelper jpeg_enc_obj_gm;
@@ -602,8 +598,6 @@ status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompr
   std::shared_ptr<DataStruct> icc =
       IccHelper::writeIccProfile(ULTRAHDR_TF_SRGB, yuv420_image.colorGamut);
 
-      printf("[dichenzhang] encodeJPEGR() api-x: pos 3\n");
-
   // compress 420 image
   JpegEncoderHelper jpeg_enc_obj_yuv420;
   if (!jpeg_enc_obj_yuv420.compressImage(
@@ -614,8 +608,6 @@ status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompr
     return ERROR_ULTRAHDR_ENCODE_ERROR;
   }
 
-  printf("[dichenzhang] encodeJPEGR() api-x: pos 4\n");
-
   ultrahdr_compressed_struct jpeg;
   jpeg.data = jpeg_enc_obj_yuv420.getCompressedImagePtr();
   jpeg.length = static_cast<int>(jpeg_enc_obj_yuv420.getCompressedImageSize());
@@ -625,8 +617,6 @@ status_t JpegR::encodeJPEGR(uhdr_uncompressed_ptr yuv420_image_ptr, uhdr_uncompr
  // append gain map, no ICC since JPEG encode already did it
   ULTRAHDR_CHECK(appendGainMap(&jpeg, &compressed_map, exif, /* icc */ nullptr, /* icc size */ 0,
                             metadata, dest));
-
-printf("[dichenzhang] encodeJPEGR() api-x: pos 5\n");
 
   return ULTRAHDR_NO_ERROR;
 }
@@ -962,23 +952,15 @@ status_t JpegR::appendGainMap(uhdr_compressed_ptr primary_jpg_image_ptr,
                               uhdr_compressed_ptr gainmap_jpg_image_ptr, uhdr_exif_ptr pExif,
                               void* pIcc, size_t icc_size, ultrahdr_metadata_ptr metadata,
                               uhdr_compressed_ptr dest) {
-
-                              printf("[dichenzhang] appendGainMap(): pos 1\n");
-
-
   if (primary_jpg_image_ptr == nullptr || gainmap_jpg_image_ptr == nullptr || metadata == nullptr ||
       dest == nullptr) {
     return ERROR_ULTRAHDR_BAD_PTR;
   }
 
-  printf("[dichenzhang] appendGainMap(): pos 2\n");
-
   if (metadata->version.compare("1.0")) {
     ALOGE("received bad value for version: %s", metadata->version.c_str());
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
-
-  printf("[dichenzhang] appendGainMap(): pos 3\n");
 
   if (metadata->maxContentBoost < metadata->minContentBoost) {
     ALOGE("received bad value for content boost min %f, max %f", metadata->minContentBoost,
@@ -986,29 +968,21 @@ status_t JpegR::appendGainMap(uhdr_compressed_ptr primary_jpg_image_ptr,
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
 
-  printf("[dichenzhang] appendGainMap(): pos 4\n");
-
   if (metadata->hdrCapacityMax < metadata->hdrCapacityMin || metadata->hdrCapacityMin < 1.0f) {
     ALOGE("received bad value for hdr capacity min %f, max %f", metadata->hdrCapacityMin,
           metadata->hdrCapacityMax);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
 
-  printf("[dichenzhang] appendGainMap(): pos 5\n");
-
   if (metadata->offsetSdr < 0.0f || metadata->offsetHdr < 0.0f) {
     ALOGE("received bad value for offset sdr %f, hdr %f", metadata->offsetSdr, metadata->offsetHdr);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
 
-  printf("[dichenzhang] appendGainMap(): pos 6\n");
-
   if (metadata->gamma <= 0.0f) {
     ALOGE("received bad value for gamma %f", metadata->gamma);
     return ERROR_ULTRAHDR_BAD_METADATA;
   }
-
-  printf("[dichenzhang] appendGainMap(): pos 7\n");
 
   const string nameSpace = "http://ns.adobe.com/xap/1.0/";
   const int nameSpaceLength = nameSpace.size() + 1;  // need to count the null terminator
